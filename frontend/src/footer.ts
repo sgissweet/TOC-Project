@@ -27,7 +27,7 @@ export function createFooter() {
     sourcecode.href = "https://github.com/17punchisama/TOC-Project.git";
     const presentation = document.createElement("a");
     presentation.textContent = "นำเสนอ";
-    presentation.href = "";
+    presentation.href = "https://youtu.be/s6Xpro2PT4o?si=pBtgxcdr3DyRlYxf";
     const members = document.createElement("a");
     members.textContent = "สมาชิกกลุ่ม";
     members.href = "members.html";
