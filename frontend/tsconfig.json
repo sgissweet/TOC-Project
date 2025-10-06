@@ -1,15 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "ES6",
-    "rootDir": "src",
+    "target": "es2018",         
+    "module": "esnext",
+    "lib": ["dom", "es2018"],    
     "outDir": "dist",
-    "strict": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "sourceMap": true,
-    "lib": ["ES6", "DOM"]
+    "rootDir": "src",
+    "strict": true
   },
   "include": ["src/**/*"]
 }

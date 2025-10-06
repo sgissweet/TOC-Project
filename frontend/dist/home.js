@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { createNavbar } from "./navbar.js";
 import { createFooter } from "./footer.js";
 createNavbar();
@@ -63,7 +54,7 @@ function buildBanner(items) {
         slide.className = "banner-slide";
         // ใช้ img แทน background-image
         const img = document.createElement("img");
-        img.src = "http://127.0.0.1:8000/image-proxy?url=" + encodeURIComponent(it.poster_url);
+        img.src = "https://backend-toc-c7i6.onrender.com/image-proxy?url=" + encodeURIComponent(it.poster_url);
         img.alt = it.title;
         img.className = "banner-img"; // ถ้าต้องใช้ style
         slide.appendChild(img);
@@ -118,52 +109,50 @@ function buildBanner(items) {
 function showBanner(i) { var _a, _b; (_b = (_a = window).showBanner) === null || _b === void 0 ? void 0 : _b.call(_a, i); }
 function goBanner(step) { var _a, _b; (_b = (_a = window).goBanner) === null || _b === void 0 ? void 0 : _b.call(_a, step); }
 // ===== Fetch series & onair =====
-function loadSeries() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            // 1. Fetch all series
-            const resAll = yield fetch("http://127.0.0.1:8000/");
-            const exportbt = document.getElementById("exportcsv");
-            exportbt === null || exportbt === void 0 ? void 0 : exportbt.removeAttribute("disabled");
-            const dataDict = yield resAll.json();
-            seriesData = Object.entries(dataDict).map(([id, item]) => {
-                var _a, _b;
-                return ({
-                    id: parseInt(id, 10),
-                    url: item.url,
-                    title: item.title,
-                    poster_url: item.poster,
-                    year: parseInt(item.year || "0", 10) || 0,
-                    gender: (_a = item.gender) !== null && _a !== void 0 ? _a : "",
-                    onair: (_b = item.onair) !== null && _b !== void 0 ? _b : false
-                });
+async function loadSeries() {
+    try {
+        // 1. Fetch all series
+        const resAll = await fetch("https://backend-toc-c7i6.onrender.com/");
+        const exportbt = document.getElementById("exportcsv");
+        exportbt === null || exportbt === void 0 ? void 0 : exportbt.removeAttribute("disabled");
+        const dataDict = await resAll.json();
+        seriesData = Object.entries(dataDict).map(([id, item]) => {
+            var _a, _b;
+            return ({
+                id: parseInt(id, 10),
+                url: item.url,
+                title: item.title,
+                poster_url: item.poster,
+                year: parseInt(item.year || "0", 10) || 0,
+                gender: (_a = item.gender) !== null && _a !== void 0 ? _a : "",
+                onair: (_b = item.onair) !== null && _b !== void 0 ? _b : false
             });
-            filteredData = seriesData;
-            // 2. Fetch onair series
-            const resOnAir = yield fetch("http://127.0.0.1:8000/api/series/OnAir");
-            const onairDict = yield resOnAir.json();
-            bannerItems = Object.values(onairDict).map(item => {
-                var _a;
-                return ({
-                    id: item.id,
-                    url: item.url,
-                    title: item.title,
-                    poster_url: item.poster,
-                    year: parseInt(item.year || "0", 10) || 0,
-                    gender: (_a = item.gender) !== null && _a !== void 0 ? _a : "",
-                    onair: true
-                });
+        });
+        filteredData = seriesData;
+        // 2. Fetch onair series
+        const resOnAir = await fetch("https://backend-toc-c7i6.onrender.com/api/series/OnAir");
+        const onairDict = await resOnAir.json();
+        bannerItems = Object.values(onairDict).map(item => {
+            var _a;
+            return ({
+                id: item.id,
+                url: item.url,
+                title: item.title,
+                poster_url: item.poster,
+                year: parseInt(item.year || "0", 10) || 0,
+                gender: (_a = item.gender) !== null && _a !== void 0 ? _a : "",
+                onair: true
             });
-            buildBanner(bannerItems);
-            // Render page 1
-            currentPage = 1;
-            renderSeries(filteredData, currentPage);
-        }
-        catch (err) {
-            console.error("Failed to fetch series", err);
-            banner.textContent = "ไม่สามารถโหลดรายการได้";
-        }
-    });
+        });
+        buildBanner(bannerItems);
+        // Render page 1
+        currentPage = 1;
+        renderSeries(filteredData, currentPage);
+    }
+    catch (err) {
+        console.error("Failed to fetch series", err);
+        banner.textContent = "ไม่สามารถโหลดรายการได้";
+    }
 }
 loadSeries();
 // ===== Grid + Pagination =====
@@ -189,7 +178,7 @@ function renderSeries(data, page = 1) {
                 window.location.href = `detail.html?url=${encodeURIComponent(series.url)}`;
             };
             const img = document.createElement("img");
-            img.src = "http://127.0.0.1:8000/image-proxy?url=" +
+            img.src = "https://backend-toc-c7i6.onrender.com/image-proxy?url=" +
                 encodeURIComponent(series.poster_url);
             img.alt = series.title;
             img.loading = "lazy";
@@ -244,4 +233,3 @@ function renderPagination(totalItems, page) {
     nextBtn.onclick = () => renderSeries(filteredData, currentPage + 1);
     paginationContainer.appendChild(nextBtn);
 }
-//# sourceMappingURL=home.js.map

@@ -52,4 +52,3 @@ const members = [
     { image: "./assets/members_img/pint.png", id: "66011452", name: "ภาราดา  โพยนอก", },
 ];
 createMemberDiv(members);
-//# sourceMappingURL=members.js.map

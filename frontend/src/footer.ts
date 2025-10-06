@@ -9,7 +9,7 @@ export function createFooter() {
 
     exportcsv.addEventListener("click", async () => {
 
-        const response = await fetch("http://localhost:8000/download-csv");
+        const response = await fetch("https://backend-toc-c7i6.onrender.com/download-csv");
         const blob = await response.blob();
 
         const url = URL.createObjectURL(blob);

@@ -1,16 +1,7 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 // show-detail.ts
 import { createNavbar } from "./navbar.js";
 createNavbar();
-const DEFAULT_COLLECTION_URL = "http://127.0.0.1:8000/series/detail";
+const DEFAULT_COLLECTION_URL = "https://backend-toc-c7i6.onrender.com/series/detail";
 const FALLBACK_IMG = "https://www.serieslike.com/img/shop_01.png";
 /* ---------------- Utils ---------------- */
 function toNumId(v) {
@@ -171,44 +162,38 @@ function postersBaseURL() {
     return new URL("./posters/", document.baseURI).toString();
 }
 /** เช็คว่ามีไฟล์รูปโลคอลจริงไหม */
-function imageExists(url) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const r = yield fetch(url, { method: "GET", cache: "no-store" });
-            return r.ok;
-        }
-        catch (_a) {
-            return false;
-        }
-    });
+async function imageExists(url) {
+    try {
+        const r = await fetch(url, { method: "GET", cache: "no-store" });
+        return r.ok;
+    }
+    catch (_a) {
+        return false;
+    }
 }
-function cacheMatchBlob(key) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!("caches" in window))
-            return undefined;
-        try {
-            const cache = yield caches.open(POSTER_CACHE_NAME);
-            const res = yield cache.match(key);
-            if (res && res.ok)
-                return yield res.blob();
-        }
-        catch (_a) { }
+async function cacheMatchBlob(key) {
+    if (!("caches" in window))
         return undefined;
-    });
+    try {
+        const cache = await caches.open(POSTER_CACHE_NAME);
+        const res = await cache.match(key);
+        if (res && res.ok)
+            return await res.blob();
+    }
+    catch (_a) { }
+    return undefined;
 }
-function cachePutBlob(key, blob, contentType) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!("caches" in window))
-            return;
-        try {
-            const cache = yield caches.open(POSTER_CACHE_NAME);
-            const headers = new Headers();
-            headers.set("Content-Type", contentType || blob.type || "application/octet-stream");
-            const resp = new Response(blob, { headers });
-            yield cache.put(key, resp);
-        }
-        catch (_a) { }
-    });
+async function cachePutBlob(key, blob, contentType) {
+    if (!("caches" in window))
+        return;
+    try {
+        const cache = await caches.open(POSTER_CACHE_NAME);
+        const headers = new Headers();
+        headers.set("Content-Type", contentType || blob.type || "application/octet-stream");
+        const resp = new Response(blob, { headers });
+        await cache.put(key, resp);
+    }
+    catch (_a) { }
 }
 /**
  * ลำดับการหา src ของโปสเตอร์ (อัปเดต):
@@ -217,34 +202,32 @@ function cachePutBlob(key, blob, contentType) {
  * 3) ใช้ remoteUrl → คืน URL proxy โดยไม่ดาวน์โหลดเอง
  * 4) FALLBACK_IMG
  */
-function resolvePosterSrc(id, remoteUrl) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const exts = ["webp", "jpg", "png", "jpeg"];
-        // 1) ลองหาไฟล์โลคอลตาม id หลายสกุล
-        for (const ext of exts) {
-            const localPath = new URL(`./${encodeURIComponent(id)}.${ext}`, postersBaseURL()).toString();
-            if (yield imageExists(localPath)) {
-                return { src: localPath };
-            }
+async function resolvePosterSrc(id, remoteUrl) {
+    const exts = ["webp", "jpg", "png", "jpeg"];
+    // 1) ลองหาไฟล์โลคอลตาม id หลายสกุล
+    for (const ext of exts) {
+        const localPath = new URL(`./${encodeURIComponent(id)}.${ext}`, postersBaseURL()).toString();
+        if (await imageExists(localPath)) {
+            return { src: localPath };
         }
-        // 2) ลอง cache blob โดยใช้ key ตาม id
-        const cacheKey = `/cached-posters/${encodeURIComponent(id)}`;
-        const cachedBlob = yield cacheMatchBlob(cacheKey);
-        if (cachedBlob) {
-            const url = URL.createObjectURL(cachedBlob);
-            return { src: url, revokeLater: url };
+    }
+    // 2) ลอง cache blob โดยใช้ key ตาม id
+    const cacheKey = `/cached-posters/${encodeURIComponent(id)}`;
+    const cachedBlob = await cacheMatchBlob(cacheKey);
+    if (cachedBlob) {
+        const url = URL.createObjectURL(cachedBlob);
+        return { src: url, revokeLater: url };
+    }
+    // 3) ถ้ามี remoteUrl → ส่งผ่าน proxy แทนการ fetch เป็น blob เอง
+    if (remoteUrl) {
+        try {
+            const absUrl = toAbsoluteURL(remoteUrl);
+            return { src: viaImageProxy(absUrl) };
         }
-        // 3) ถ้ามี remoteUrl → ส่งผ่าน proxy แทนการ fetch เป็น blob เอง
-        if (remoteUrl) {
-            try {
-                const absUrl = toAbsoluteURL(remoteUrl);
-                return { src: viaImageProxy(absUrl) };
-            }
-            catch (_a) { }
-        }
-        // 4) สุดท้ายใช้รูปสำรอง
-        return { src: FALLBACK_IMG };
-    });
+        catch (_a) { }
+    }
+    // 4) สุดท้ายใช้รูปสำรอง
+    return { src: FALLBACK_IMG };
 }
 /* ---------------- Web Component ---------------- */
 export class ShowDetail extends HTMLElement {
@@ -328,105 +311,103 @@ export class ShowDetail extends HTMLElement {
      * - ถ้าไม่มีก็ใช้ ?id=... หรือ attribute show-id → เรียก {collectionUrl}/{id}
      * - รองรับ ?api=... เป็น base (เช่น http://0.0.0.0:8000 → /series/detail)
      */
-    loadData() {
-        return __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
-            const attrSrc = (_a = this.getAttribute("data-src")) === null || _a === void 0 ? void 0 : _a.trim();
-            const apiOverride = getApiOverride();
-            // เลือก collectionUrl ตามลำดับ: attribute → ?api= → default
-            let collectionUrl = attrSrc ||
-                (apiOverride
-                    ? (/\/series\/detail(\/|$)/.test(apiOverride)
-                        ? apiOverride
-                        : joinBasePath(apiOverride, "series/detail"))
-                    : DEFAULT_COLLECTION_URL);
-            const attrId = (_b = this.getAttribute("show-id")) === null || _b === void 0 ? void 0 : _b.trim();
-            const { id: qId, url: qUrl } = getQueryParams();
-            let fetchUrl;
-            if (qUrl) {
-                const u = new URL(collectionUrl);
-                u.searchParams.set("url", qUrl);
-                fetchUrl = u.toString();
-            }
-            else {
-                const sid = attrId || qId;
-                if (!sid) {
-                    this.applyAttributesFallback();
-                    return;
-                }
-                fetchUrl = joinUrl(collectionUrl, sid);
-            }
-            if (this._abortCtrl)
-                this._abortCtrl.abort();
-            this._abortCtrl = new AbortController();
-            try {
-                const res = yield fetch(fetchUrl, {
-                    signal: this._abortCtrl.signal,
-                    cache: "no-store",
-                });
-                if (!res.ok)
-                    throw new Error(`HTTP ${res.status}`);
-                const raw = (yield res.json());
-                // base ของ response (ใช้ทำ absolute สำหรับรูป/ลิงก์ที่เป็น relative ของ API)
-                const responseBase = res.url || collectionUrl;
-                // โปสเตอร์จาก API (รองรับหลายชื่อฟิลด์) → ทำ absolute (ฝั่ง API)
-                const posterRemoteRaw = (_e = (_d = (_c = raw === null || raw === void 0 ? void 0 : raw.image) !== null && _c !== void 0 ? _c : raw === null || raw === void 0 ? void 0 : raw.poster) !== null && _d !== void 0 ? _d : raw === null || raw === void 0 ? void 0 : raw.poster_url) !== null && _e !== void 0 ? _e : undefined;
-                const posterRemote = posterRemoteRaw
-                    ? toAbsoluteFrom(responseBase, posterRemoteRaw)
-                    : undefined;
-                // sid สำหรับหาภาพโลคอล/แคช — ให้ raw.id มาก่อน (เพิ่ม id มาแล้ว)
-                const sidForPoster = ((_h = (_g = (_f = raw === null || raw === void 0 ? void 0 : raw.id) !== null && _f !== void 0 ? _f : attrId) !== null && _g !== void 0 ? _g : qId) !== null && _h !== void 0 ? _h : "").toString();
-                const { src: posterSrc, revokeLater } = yield resolvePosterSrc(sidForPoster, posterRemote);
-                if (revokeLater)
-                    this._objectUrls.push(revokeLater);
-                // map fields ให้สอดคล้องข้อมูลตัวอย่าง
-                const data = {
-                    id: toNumId((_j = raw === null || raw === void 0 ? void 0 : raw.id) !== null && _j !== void 0 ? _j : qId),
-                    title: (_l = (_k = raw === null || raw === void 0 ? void 0 : raw.title) !== null && _k !== void 0 ? _k : raw === null || raw === void 0 ? void 0 : raw.name) !== null && _l !== void 0 ? _l : "",
-                    year: String((_p = (_o = (_m = raw === null || raw === void 0 ? void 0 : raw.year) !== null && _m !== void 0 ? _m : raw === null || raw === void 0 ? void 0 : raw.release_year) !== null && _o !== void 0 ? _o : raw === null || raw === void 0 ? void 0 : raw.date) !== null && _p !== void 0 ? _p : ""),
-                    image: posterSrc,
-                    description: (_s = (_r = (_q = raw === null || raw === void 0 ? void 0 : raw.description) !== null && _q !== void 0 ? _q : raw === null || raw === void 0 ? void 0 : raw.synopsis) !== null && _r !== void 0 ? _r : raw === null || raw === void 0 ? void 0 : raw.overview) !== null && _s !== void 0 ? _s : "",
-                    trailer: (_u = (_t = raw === null || raw === void 0 ? void 0 : raw.trailer) !== null && _t !== void 0 ? _t : raw === null || raw === void 0 ? void 0 : raw.trailer_url) !== null && _u !== void 0 ? _u : "",
-                    backHref: this.getAttribute("back-href") || "javascript:history.back()",
-                    cast: Array.isArray(raw === null || raw === void 0 ? void 0 : raw.cast)
-                        ? raw.cast.map((v) => {
-                            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-                            return ({
-                                id: toNumId(v === null || v === void 0 ? void 0 : v.id),
-                                first: String((_b = (_a = v === null || v === void 0 ? void 0 : v.first) !== null && _a !== void 0 ? _a : v === null || v === void 0 ? void 0 : v.firstname) !== null && _b !== void 0 ? _b : "").trim(),
-                                last: String((_d = (_c = v === null || v === void 0 ? void 0 : v.last) !== null && _c !== void 0 ? _c : v === null || v === void 0 ? void 0 : v.lastname) !== null && _d !== void 0 ? _d : "").trim(),
-                                img: proxifyImageIfNeeded((_g = (_f = (_e = v === null || v === void 0 ? void 0 : v.img) !== null && _e !== void 0 ? _e : v === null || v === void 0 ? void 0 : v.image) !== null && _f !== void 0 ? _f : v === null || v === void 0 ? void 0 : v.photo) !== null && _g !== void 0 ? _g : ""),
-                                href: toAbsPreferDoc((_j = (_h = v === null || v === void 0 ? void 0 : v.href) !== null && _h !== void 0 ? _h : v === null || v === void 0 ? void 0 : v.url) !== null && _j !== void 0 ? _j : ""),
-                            });
-                        })
-                        : Array.isArray(raw === null || raw === void 0 ? void 0 : raw.castings)
-                            ? raw.castings.map((item, idx) => {
-                                var _a, _b, _c, _d, _e, _f;
-                                // โครงสร้าง { name, url, image }
-                                const name = String((_a = item === null || item === void 0 ? void 0 : item.name) !== null && _a !== void 0 ? _a : "").trim();
-                                const parts = name.split(/\s+/);
-                                const first = (_b = parts[0]) !== null && _b !== void 0 ? _b : "";
-                                const last = (_c = parts[1]) !== null && _c !== void 0 ? _c : "";
-                                return {
-                                    id: (_d = toNumId(item === null || item === void 0 ? void 0 : item.id)) !== null && _d !== void 0 ? _d : idx + 1,
-                                    first,
-                                    last,
-                                    img: proxifyImageIfNeeded((_e = item === null || item === void 0 ? void 0 : item.image) !== null && _e !== void 0 ? _e : ""),
-                                    href: toAbsPreferDoc((_f = item === null || item === void 0 ? void 0 : item.url) !== null && _f !== void 0 ? _f : ""),
-                                };
-                            })
-                            : [],
-                };
-                this.applyData(data);
-            }
-            catch (err) {
-                console.warn("[show-detail] Failed to fetch JSON:", err);
+    async loadData() {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
+        const attrSrc = (_a = this.getAttribute("data-src")) === null || _a === void 0 ? void 0 : _a.trim();
+        const apiOverride = getApiOverride();
+        // เลือก collectionUrl ตามลำดับ: attribute → ?api= → default
+        let collectionUrl = attrSrc ||
+            (apiOverride
+                ? (/\/series\/detail(\/|$)/.test(apiOverride)
+                    ? apiOverride
+                    : joinBasePath(apiOverride, "series/detail"))
+                : DEFAULT_COLLECTION_URL);
+        const attrId = (_b = this.getAttribute("show-id")) === null || _b === void 0 ? void 0 : _b.trim();
+        const { id: qId, url: qUrl } = getQueryParams();
+        let fetchUrl;
+        if (qUrl) {
+            const u = new URL(collectionUrl);
+            u.searchParams.set("url", qUrl);
+            fetchUrl = u.toString();
+        }
+        else {
+            const sid = attrId || qId;
+            if (!sid) {
                 this.applyAttributesFallback();
+                return;
             }
-            finally {
-                this._abortCtrl = undefined;
-            }
-        });
+            fetchUrl = joinUrl(collectionUrl, sid);
+        }
+        if (this._abortCtrl)
+            this._abortCtrl.abort();
+        this._abortCtrl = new AbortController();
+        try {
+            const res = await fetch(fetchUrl, {
+                signal: this._abortCtrl.signal,
+                cache: "no-store",
+            });
+            if (!res.ok)
+                throw new Error(`HTTP ${res.status}`);
+            const raw = (await res.json());
+            // base ของ response (ใช้ทำ absolute สำหรับรูป/ลิงก์ที่เป็น relative ของ API)
+            const responseBase = res.url || collectionUrl;
+            // โปสเตอร์จาก API (รองรับหลายชื่อฟิลด์) → ทำ absolute (ฝั่ง API)
+            const posterRemoteRaw = (_e = (_d = (_c = raw === null || raw === void 0 ? void 0 : raw.image) !== null && _c !== void 0 ? _c : raw === null || raw === void 0 ? void 0 : raw.poster) !== null && _d !== void 0 ? _d : raw === null || raw === void 0 ? void 0 : raw.poster_url) !== null && _e !== void 0 ? _e : undefined;
+            const posterRemote = posterRemoteRaw
+                ? toAbsoluteFrom(responseBase, posterRemoteRaw)
+                : undefined;
+            // sid สำหรับหาภาพโลคอล/แคช — ให้ raw.id มาก่อน (เพิ่ม id มาแล้ว)
+            const sidForPoster = ((_h = (_g = (_f = raw === null || raw === void 0 ? void 0 : raw.id) !== null && _f !== void 0 ? _f : attrId) !== null && _g !== void 0 ? _g : qId) !== null && _h !== void 0 ? _h : "").toString();
+            const { src: posterSrc, revokeLater } = await resolvePosterSrc(sidForPoster, posterRemote);
+            if (revokeLater)
+                this._objectUrls.push(revokeLater);
+            // map fields ให้สอดคล้องข้อมูลตัวอย่าง
+            const data = {
+                id: toNumId((_j = raw === null || raw === void 0 ? void 0 : raw.id) !== null && _j !== void 0 ? _j : qId),
+                title: (_l = (_k = raw === null || raw === void 0 ? void 0 : raw.title) !== null && _k !== void 0 ? _k : raw === null || raw === void 0 ? void 0 : raw.name) !== null && _l !== void 0 ? _l : "",
+                year: String((_p = (_o = (_m = raw === null || raw === void 0 ? void 0 : raw.year) !== null && _m !== void 0 ? _m : raw === null || raw === void 0 ? void 0 : raw.release_year) !== null && _o !== void 0 ? _o : raw === null || raw === void 0 ? void 0 : raw.date) !== null && _p !== void 0 ? _p : ""),
+                image: posterSrc,
+                description: (_s = (_r = (_q = raw === null || raw === void 0 ? void 0 : raw.description) !== null && _q !== void 0 ? _q : raw === null || raw === void 0 ? void 0 : raw.synopsis) !== null && _r !== void 0 ? _r : raw === null || raw === void 0 ? void 0 : raw.overview) !== null && _s !== void 0 ? _s : "",
+                trailer: (_u = (_t = raw === null || raw === void 0 ? void 0 : raw.trailer) !== null && _t !== void 0 ? _t : raw === null || raw === void 0 ? void 0 : raw.trailer_url) !== null && _u !== void 0 ? _u : "",
+                backHref: this.getAttribute("back-href") || "javascript:history.back()",
+                cast: Array.isArray(raw === null || raw === void 0 ? void 0 : raw.cast)
+                    ? raw.cast.map((v) => {
+                        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+                        return ({
+                            id: toNumId(v === null || v === void 0 ? void 0 : v.id),
+                            first: String((_b = (_a = v === null || v === void 0 ? void 0 : v.first) !== null && _a !== void 0 ? _a : v === null || v === void 0 ? void 0 : v.firstname) !== null && _b !== void 0 ? _b : "").trim(),
+                            last: String((_d = (_c = v === null || v === void 0 ? void 0 : v.last) !== null && _c !== void 0 ? _c : v === null || v === void 0 ? void 0 : v.lastname) !== null && _d !== void 0 ? _d : "").trim(),
+                            img: proxifyImageIfNeeded((_g = (_f = (_e = v === null || v === void 0 ? void 0 : v.img) !== null && _e !== void 0 ? _e : v === null || v === void 0 ? void 0 : v.image) !== null && _f !== void 0 ? _f : v === null || v === void 0 ? void 0 : v.photo) !== null && _g !== void 0 ? _g : ""),
+                            href: toAbsPreferDoc((_j = (_h = v === null || v === void 0 ? void 0 : v.href) !== null && _h !== void 0 ? _h : v === null || v === void 0 ? void 0 : v.url) !== null && _j !== void 0 ? _j : ""),
+                        });
+                    })
+                    : Array.isArray(raw === null || raw === void 0 ? void 0 : raw.castings)
+                        ? raw.castings.map((item, idx) => {
+                            var _a, _b, _c, _d, _e, _f;
+                            // โครงสร้าง { name, url, image }
+                            const name = String((_a = item === null || item === void 0 ? void 0 : item.name) !== null && _a !== void 0 ? _a : "").trim();
+                            const parts = name.split(/\s+/);
+                            const first = (_b = parts[0]) !== null && _b !== void 0 ? _b : "";
+                            const last = (_c = parts[1]) !== null && _c !== void 0 ? _c : "";
+                            return {
+                                id: (_d = toNumId(item === null || item === void 0 ? void 0 : item.id)) !== null && _d !== void 0 ? _d : idx + 1,
+                                first,
+                                last,
+                                img: proxifyImageIfNeeded((_e = item === null || item === void 0 ? void 0 : item.image) !== null && _e !== void 0 ? _e : ""),
+                                href: toAbsPreferDoc((_f = item === null || item === void 0 ? void 0 : item.url) !== null && _f !== void 0 ? _f : ""),
+                            };
+                        })
+                        : [],
+            };
+            this.applyData(data);
+        }
+        catch (err) {
+            console.warn("[show-detail] Failed to fetch JSON:", err);
+            this.applyAttributesFallback();
+        }
+        finally {
+            this._abortCtrl = undefined;
+        }
     }
     applyData(d) {
         if (d.title) {
@@ -568,4 +549,3 @@ export class ShowDetail extends HTMLElement {
 if (!customElements.get("show-detail")) {
     customElements.define("show-detail", ShowDetail);
 }
-//# sourceMappingURL=detail.js.map

@@ -66,4 +66,3 @@ export function createNavbar() {
     nav.appendChild(changeThemeDiv);
     document.body.prepend(nav);
 }
-//# sourceMappingURL=navbar.js.map

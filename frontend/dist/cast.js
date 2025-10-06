@@ -1,17 +1,8 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 // cast.ts
 import { createNavbar } from "./navbar.js";
 createNavbar();
 /** ====== Config ====== */
-const CASTING_API_BASE = "http://127.0.0.1:8000/casting";
+const CASTING_API_BASE = "https://backend-toc-c7i6.onrender.com/casting";
 const FALLBACK_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png";
 /** ====== Utils ====== */
 function el(tag, className, text) {
@@ -269,39 +260,36 @@ function renderPage(data) {
     }
 }
 /** ====== ดึง JSON แล้วเรนเดอร์ ====== */
-function bootstrap() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const qUrl = qs("url");
-            const qId = qs("id");
-            let target = CASTING_API_BASE;
-            if (qUrl) {
-                const u = new URL(CASTING_API_BASE);
-                u.searchParams.set("url", qUrl);
-                target = u.toString();
-            }
-            else if (qId) {
-                const u = new URL(CASTING_API_BASE);
-                u.searchParams.set("id", qId);
-                target = u.toString();
-            }
-            const res = yield fetch(target, { cache: "no-store" });
-            if (!res.ok)
-                throw new Error(`Fetch casting failed: ${res.status}`);
-            const raw = (yield res.json());
-            const linkBase = (qUrl ? toAbsoluteFrom(location.href, qUrl) : res.url) || CASTING_API_BASE;
-            const data = transformToPageData(raw, linkBase);
-            renderNavigate();
-            renderPage(data);
+async function bootstrap() {
+    try {
+        const qUrl = qs("url");
+        const qId = qs("id");
+        let target = CASTING_API_BASE;
+        if (qUrl) {
+            const u = new URL(CASTING_API_BASE);
+            u.searchParams.set("url", qUrl);
+            target = u.toString();
         }
-        catch (err) {
-            console.error(err);
-            renderNavigate();
-            const fallback = el("div", "page");
-            fallback.innerHTML = `<p>ไม่สามารถโหลดข้อมูลได้</p>`;
-            document.body.appendChild(fallback);
+        else if (qId) {
+            const u = new URL(CASTING_API_BASE);
+            u.searchParams.set("id", qId);
+            target = u.toString();
         }
-    });
+        const res = await fetch(target, { cache: "no-store" });
+        if (!res.ok)
+            throw new Error(`Fetch casting failed: ${res.status}`);
+        const raw = (await res.json());
+        const linkBase = (qUrl ? toAbsoluteFrom(location.href, qUrl) : res.url) || CASTING_API_BASE;
+        const data = transformToPageData(raw, linkBase);
+        renderNavigate();
+        renderPage(data);
+    }
+    catch (err) {
+        console.error(err);
+        renderNavigate();
+        const fallback = el("div", "page");
+        fallback.innerHTML = `<p>ไม่สามารถโหลดข้อมูลได้</p>`;
+        document.body.appendChild(fallback);
+    }
 }
 bootstrap();
-//# sourceMappingURL=cast.js.map
